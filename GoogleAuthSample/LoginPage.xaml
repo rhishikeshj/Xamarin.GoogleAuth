@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" x:Class="GoogleAuthSample.LoginPage" Title="Login to Google" Padding="0">
+	<ContentPage.Content>
+		<Grid>
+			<Grid.RowDefinitions>
+				<RowDefinition Height="2*" />
+				<RowDefinition Height="*" />
+			</Grid.RowDefinitions>
+			<Image Grid.RowSpan="2" Source="material_background.jpg" Aspect="AspectFill" />
+			<Label x:Name="Content" HorizontalTextAlignment="Center" Grid.Row="0" FontSize="35" TextColor="#201e46" VerticalOptions="CenterAndExpand" />
+			<Button x:Name="LoginButton" Grid.Row="1" TextColor="White" BackgroundColor="#4285f4" Image="google_icon.png" FontSize="20" BorderRadius="5" WidthRequest="150" Text="Login" VerticalOptions="CenterAndExpand"
+				HorizontalOptions="Center" ContentLayout="Left" Clicked="loginClicked" />
+			<Grid x:Name="LogoutContainerView" IsVisible="false" Grid.Row="1" ColumnSpacing="10" Margin="5,0,5,0">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="*" />
+					<ColumnDefinition Width="*" />
+				</Grid.ColumnDefinitions>
+				<Button Clicked="logoutClicked" Grid.Column="0" TextColor="White" BackgroundColor="#4285f4" Image="google_icon_black.png" FontSize="20" BorderRadius="5" Text="Logout" VerticalOptions="CenterAndExpand" />
+				<Button Clicked="disconnectClicked" Grid.Column="1" TextColor="White" BackgroundColor="#4285f4" FontSize="20" BorderRadius="5" Text="Disconnect" VerticalOptions="CenterAndExpand" />
+			</Grid>
+		</Grid>
+	</ContentPage.Content>
+</ContentPage>
