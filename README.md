@@ -18,7 +18,6 @@ Here are the basic steps that you need to follow to add Google Authentication in
 1. Add references to the _Plugin.GoogleAuth.iOS_ and _Plugin.GoogleAuth.Abstractions_ projects into your Android project.
 1. Inside your platform specific projects initialize the Google Authentication service as shown below.
 
-            :::csharp
 			IGoogleAuthenticationService _service;
 			_service = CrossGoogleAuth.Current;
 			Dictionary<string, object> googleSignInConfig = new Dictionary<string, object> {
