@@ -1,173 +1,171 @@
 ﻿using System;
-using System.Threading;
 using System.Threading.Tasks;
 using Android.App;
 using Android.Content;
 using Android.Gms.Common;
 using Android.Gms.Common.Apis;
-using Android.Gms.Plus;
-using Android.Gms.Auth;
-using Android.OS;
-using Android.Widget;
 using Plugin.GoogleAuth.Abstractions;
 using System.Collections.Generic;
+using Android.Gms.Auth.Api.SignIn;
+using Android.Gms.Auth.Api;
+using Android.Gms.Extensions;
 
 namespace Plugin.GoogleAuth
 {
 	public class GoogleAuthImpl : Java.Lang.Object,
-	GoogleApiClient.IConnectionCallbacks,
 	GoogleApiClient.IOnConnectionFailedListener,
 	IGoogleAuthenticationService
 	{
 		GoogleApiClient _googleApiClient;
 		IGoogleAuthenticationCallbacks _callbackDelegate;
 		Activity _context;
-		const int RC_SIGN_IN = 9001, RC_GET_AUTH_CODE = 9003;
-		string _authToken;
+		string _clientId;
+		TaskCompletionSource<GoogleSignInResult> signInResultSource;
+
+		const int RC_SIGN_IN = 9001;
+		string _idToken;
+		string _accountName;
 
 		private void verifyInit()
 		{
-			if (_context == null || _googleApiClient == null)
+			if (_context == null)
 			{
 				throw new MissingFieldException("Please initialize the Google Authentication service correctly.");
 			}
 		}
 
+		public void clearOutValues(bool removeConfigs)
+		{
+			if (removeConfigs)
+			{
+				_googleApiClient = null;
+				_context = null;
+				_clientId = null;
+				_callbackDelegate = null;
+			}
+			_idToken = _accountName = null;
+		}
+
 		public GoogleAuthImpl()
 		{
-			_context = null;
-			_callbackDelegate = null;
-			_authToken = null;
+			clearOutValues(true);
 		}
 
-		public async Task Connect()
+		public void Connect()
 		{
 			verifyInit();
-			await Task.Run(() =>
+			Task.Run(async () =>
 			{
-				_googleApiClient.Connect();
+				try
+				{
+					var gsoBuilder = new GoogleSignInOptions.Builder(GoogleSignInOptions.DefaultSignIn)
+															.RequestIdToken(_clientId)
+															.RequestEmail();
+
+					var gso = gsoBuilder.Build();
+					_googleApiClient = new GoogleApiClient.Builder(_context)
+														  .AddApi(Auth.GOOGLE_SIGN_IN_API, gso)
+														  .Build();
+					_googleApiClient.Connect();
+
+					if (signInResultSource != null && !signInResultSource.Task.IsCompleted)
+					{
+						signInResultSource.TrySetCanceled();
+					}
+
+					signInResultSource = new TaskCompletionSource<GoogleSignInResult>();
+
+					var signInIntent = Auth.GoogleSignInApi.GetSignInIntent(_googleApiClient);
+					_context.StartActivityForResult(signInIntent, RC_SIGN_IN);
+					var result = await signInResultSource.Task;
+					if (result == null || result.Status.IsCanceled || result.Status.IsInterrupted)
+					{
+						_callbackDelegate.OnConnectionFailed("Connection cancelled");
+						return;
+					}
+
+					if (!result.IsSuccess)
+					{
+						_callbackDelegate.OnConnectionFailed(result.Status.StatusMessage);
+						return;
+					}
+					_accountName = result.SignInAccount?.DisplayName;
+					_idToken = result.SignInAccount?.IdToken;
+
+					_callbackDelegate.OnConnectionSucceeded();
+				}
+				catch (Exception ex)
+				{
+					_callbackDelegate.OnConnectionFailed(ex.Message);
+				}
+
 			});
 		}
 
-		public async Task SignOut()
+		public void SignOut()
 		{
 			verifyInit();
-			await Task.Run(() =>
+			Task.Run(() =>
 			{
-				PlusClass.AccountApi.ClearDefaultAccount(_googleApiClient);
-				_googleApiClient.Disconnect();
+				if (_googleApiClient != null && _googleApiClient.IsConnected)
+				{
+					Auth.GoogleSignInApi.SignOut(_googleApiClient);
+					clearOutValues(false);
+				}
 			});
 		}
 
-		public async Task Disconnect()
+		public void Disconnect()
 		{
 			verifyInit();
-			_authToken = null;
-			await Task.Run(async () =>
+			_idToken = null;
+			Task.Run(() =>
 			{
-				PlusClass.AccountApi.ClearDefaultAccount(_googleApiClient);
-				await PlusClass.AccountApi.RevokeAccessAndDisconnect(_googleApiClient);
-				_googleApiClient.Disconnect();
+				if (_googleApiClient != null && _googleApiClient.IsConnected)
+				{
+					Auth.GoogleSignInApi.RevokeAccess(_googleApiClient);
+					Auth.GoogleSignInApi.SignOut(_googleApiClient);
+					clearOutValues(false);
+				}
 			});
 		}
 
-		public string GetAuthToken()
+		public string GetIdToken()
 		{
 			verifyInit();
-			return _authToken;
+			return _idToken;
 		}
 
 		public string GetAccountName()
 		{
 			verifyInit();
-			return PlusClass.AccountApi.GetAccountName(_googleApiClient);
+			return _accountName;
 		}
 
 		public bool IsConnected()
 		{
 			verifyInit();
-			return _googleApiClient.IsConnected;
-		}
-
-		public void OnConnected(Bundle connectionHint)
-		{
-			var accountName = PlusClass.AccountApi.GetAccountName(_googleApiClient);
-			var scopes = "oauth2:profile";
-			ThreadPool.QueueUserWorkItem(
-				(o) =>
-				{
-					try
-					{
-						_authToken = GoogleAuthUtil.GetToken(_context, accountName, scopes);
-						Console.WriteLine("Token is " + _authToken);
-					}
-					catch (UserRecoverableException e)
-					{
-						_context.StartActivityForResult(e.Intent, RC_GET_AUTH_CODE);
-					}
-				}
-			);
-			_callbackDelegate.OnConnectionSucceeded();
-		}
-
-		public void OnConnectionSuspended(int cause)
-		{
-			_authToken = null;
+			return _googleApiClient != null && _googleApiClient.IsConnected;
 		}
 
 		public void OnConnectionFailed(ConnectionResult result)
 		{
-			_authToken = null;
-			if (result.HasResolution)
-			{
-				try
-				{
-					result.StartResolutionForResult(_context, RC_SIGN_IN);
-				}
-				catch (IntentSender.SendIntentException e)
-				{
-					_googleApiClient.Connect();
-				}
-			}
-			else {
-				ShowErrorDialog(result);
-			}
-			_callbackDelegate.OnConnectionFailed();
+			clearOutValues(false);
 		}
 
-		void ShowErrorDialog(ConnectionResult connectionResult)
+		public static object getKeyFromConfig(string key, Dictionary<string, object> config)
 		{
-			int errorCode = connectionResult.ErrorCode;
-
-			if (GooglePlayServicesUtil.IsUserRecoverableError(errorCode))
+			if (config[key] == null)
 			{
-				var listener = new DialogInterfaceOnCancelListener();
-				listener.OnCancelImpl = (dialog) =>
-				{
-					Console.WriteLine("Cancelled");
-				};
-				GooglePlayServicesUtil.GetErrorDialog(errorCode, _context, RC_SIGN_IN, listener).Show();
+				throw new KeyNotFoundException("Please provide the " + key + " via config dictionary.");
 			}
-			else {
-				var errorstring = string.Format("Google Play Services Error: {0}", errorCode);
-				Toast.MakeText(_context, errorstring, ToastLength.Short).Show();
-			}
+			return config[key];
 		}
 
 		public void Init(Dictionary<string, object> config)
 		{
-			if (config["context"] == null)
-			{
-				throw new KeyNotFoundException("Please provide the Android activity via the 'context' key.");
-			}
-			_context = (Activity)config["context"];
-			_googleApiClient = new GoogleApiClient.Builder(_context)
-												  .AddConnectionCallbacks(this)
-												  .AddOnConnectionFailedListener(this)
-												  .AddApi(PlusClass.API)
-												  .AddScope(new Scope(Scopes.Profile))
-												  .Build();
-
+			_clientId = getKeyFromConfig("clientId", config) as string;
+			_context = getKeyFromConfig("context", config) as Activity;
 		}
 
 		public void SetAuthenticationCallbacks(IGoogleAuthenticationCallbacks callbacks)
@@ -180,13 +178,20 @@ namespace Plugin.GoogleAuth
 			throw new NotImplementedException();
 		}
 
-		class DialogInterfaceOnCancelListener : Java.Lang.Object, IDialogInterfaceOnCancelListener
+		public void setSignInResult(GoogleSignInResult result)
 		{
-			public Action<IDialogInterface> OnCancelImpl { get; set; }
-
-			public void OnCancel(IDialogInterface dialog)
+			if (signInResultSource != null && !signInResultSource.Task.IsCompleted)
 			{
-				OnCancelImpl(dialog);
+				signInResultSource.TrySetResult(result);
+			}
+		}
+
+		public void OnActivityResult(int requestCode, Result result, Intent data)
+		{
+			if (requestCode == RC_SIGN_IN)
+			{
+				var googleSignInResult = Auth.GoogleSignInApi.GetSignInResultFromIntent(data);
+				setSignInResult(googleSignInResult);
 			}
 		}
 	}

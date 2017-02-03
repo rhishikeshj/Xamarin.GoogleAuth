@@ -29,7 +29,7 @@ namespace Plugin.GoogleAuth
 	public class GoogleAuthImpl : GIDSignInDelegate, IGoogleAuthenticationService
 	{
 		string _clientId;
-		string _authToken;
+		string _idToken;
 		string _accountName;
 		IGoogleAuthenticationCallbacks _callbackDelegate;
 
@@ -41,17 +41,25 @@ namespace Plugin.GoogleAuth
 			}
 		}
 
-		public GoogleAuthImpl()
+		private void clearOutValues(bool removeConfigs)
 		{
-			_clientId = null;
-			_authToken = _accountName = null;
-			_callbackDelegate = null;
+			if (removeConfigs)
+			{
+				_clientId = null;
+				_callbackDelegate = null;
+			}
+			_idToken = _accountName = null;
 		}
 
-		public async Task Connect()
+		public GoogleAuthImpl()
+		{
+			clearOutValues(true);
+		}
+
+		public void Connect()
 		{
 			verifyInit();
-			await Task.Run(() =>
+			Task.Run(() =>
 			{
 				if (IsConnected() == false)
 				{
@@ -60,10 +68,24 @@ namespace Plugin.GoogleAuth
 			});
 		}
 
-		public async Task Disconnect()
+		public void SignOut()
 		{
 			verifyInit();
-			await Task.Run(() => GIDSignIn.SharedInstance.Disconnect());
+			Task.Run(() =>
+			{
+				GIDSignIn.SharedInstance.SignOut();
+				clearOutValues(false);
+			});
+		}
+
+		public void Disconnect()
+		{
+			verifyInit();
+			Task.Run(() =>
+			{
+				GIDSignIn.SharedInstance.Disconnect();
+				clearOutValues(false);
+			});
 		}
 
 		public string GetAccountName()
@@ -72,23 +94,16 @@ namespace Plugin.GoogleAuth
 			return _accountName;
 		}
 
-		public string GetAuthToken()
+		public string GetIdToken()
 		{
 			verifyInit();
-			return _authToken;
+			return _idToken;
 		}
 
 		public bool IsConnected()
 		{
 			verifyInit();
 			return GIDSignIn.SharedInstance.HasAuthInKeychain;
-		}
-
-		public async Task SignOut()
-		{
-			verifyInit();
-			await Task.Run(() => GIDSignIn.SharedInstance.SignOut());
-
 		}
 
 		public bool HandleURL(object urlObject, string sourceApplication, object annotation)
@@ -101,7 +116,7 @@ namespace Plugin.GoogleAuth
 		{
 			if (config["clientId"] == null)
 			{
-				throw new KeyNotFoundException("Please provide the Android activity via the 'context' key.");
+				throw new KeyNotFoundException("Please provide the server client id via the 'cliendId' key.");
 			}
 			_clientId = (string)config["clientId"];
 			GIDSignIn.SharedInstance.ClientID = _clientId;
@@ -123,8 +138,9 @@ namespace Plugin.GoogleAuth
 		{
 			if (error == null)
 			{
-				_authToken = user.Authentication.IdToken;
+				_idToken = user.Authentication.IdToken;
 				_accountName = user.Profile.Name;
+
 				if (_callbackDelegate != null)
 				{
 					_callbackDelegate.OnConnectionSucceeded();
@@ -134,14 +150,14 @@ namespace Plugin.GoogleAuth
 			{
 				if (_callbackDelegate != null)
 				{
-					_callbackDelegate.OnConnectionFailed();
+					_callbackDelegate.OnConnectionFailed(error.Description);
 				}
 			}
 		}
 
 		public override void DidDisconnectWithUser(GIDSignIn signIn, GIDGoogleUser user, NSError error)
 		{
-			_authToken = _accountName = null;
+			clearOutValues(false);
 		}
 	}
 }
