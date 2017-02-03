@@ -28,8 +28,8 @@ namespace GoogleAuthSample.Droid
 			Xamarin.Forms.Forms.Init(this, bundle);
 			_service = CrossGoogleAuth.Current;
 			Dictionary<string, object> googleSignInConfig = new Dictionary<string, object> {
-				{"clientId", "20176738705-dpddr73bo8llbjg4miiold9tsph79l10.apps.googleusercontent.com"},
-				{"context", this}
+				{"clientId", "20176738705-0fm670g68ej9t3p53deb62jr38kqd10u.apps.googleusercontent.com"},
+				{"context", this},
 			};
 			_service.Init(googleSignInConfig);
 			_service.SetAuthenticationCallbacks(this);
@@ -37,9 +37,16 @@ namespace GoogleAuthSample.Droid
 			LoadApplication(new App());
 		}
 
-		public void OnConnectionFailed()
+		protected override void OnActivityResult(int requestCode, Result resultCode, Intent data)
 		{
-			Console.WriteLine("Connection failed");
+			base.OnActivityResult(requestCode, resultCode, data);
+			var googleAuthService = _service as GoogleAuthImpl;
+			googleAuthService.OnActivityResult(requestCode, resultCode, data);
+		}
+
+		public void OnConnectionFailed(string errorMessage)
+		{
+			Console.WriteLine("Connection failed : " + errorMessage);
 		}
 
 		public void OnConnectionSucceeded()

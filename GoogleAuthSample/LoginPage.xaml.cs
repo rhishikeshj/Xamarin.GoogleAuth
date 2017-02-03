@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using Plugin.GoogleAuth;
 using Plugin.GoogleAuth.Abstractions;
 using Xamarin.Forms;
@@ -48,16 +48,23 @@ namespace GoogleAuthSample
 
 		public void OnConnectionSucceeded()
 		{
-			LoginButton.IsVisible = false;
-			LogoutContainerView.IsVisible = true;
-			Content.Text = "Signed in as : " + _service.GetAccountName();
+			Device.BeginInvokeOnMainThread(() =>
+			{
+				LoginButton.IsVisible = false;
+				LogoutContainerView.IsVisible = true;
+				Content.Text = "Signed in as : " + _service.GetAccountName();
+				Debug.WriteLine("Id token is : " + _service.GetIdToken());
+			});
 		}
 
-		public void OnConnectionFailed()
+		public void OnConnectionFailed(string errorMessage)
 		{
-			LoginButton.IsVisible = true;
-			LogoutContainerView.IsVisible = false;
-			Content.Text = "Signed out!";
+			Device.BeginInvokeOnMainThread(() =>
+			{
+				LoginButton.IsVisible = true;
+				LogoutContainerView.IsVisible = false;
+				Content.Text = "Signed out with error : " + errorMessage;
+			});
 		}
 	}
 }

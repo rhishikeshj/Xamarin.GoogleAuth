@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 using Foundation;
 using UIKit;
@@ -13,23 +12,24 @@ namespace GoogleAuthSample.iOS
 	public partial class AppDelegate : Xamarin.Forms.Platform.iOS.FormsApplicationDelegate, IGoogleAuthenticationCallbacks
 	{
 		IGoogleAuthenticationService _service;
-		public override bool FinishedLaunching(UIApplication app, NSDictionary options)
+		public override bool FinishedLaunching(UIApplication uiApplication, NSDictionary launchOptions)
 		{
 			Xamarin.Forms.Forms.Init();
 			_service = CrossGoogleAuth.Current;
 			Dictionary<string, object> googleSignInConfig = new Dictionary<string, object> {
-				{"clientId", "20176738705-dpddr73bo8llbjg4miiold9tsph79l10.apps.googleusercontent.com"}
+				{"clientId", "20176738705-dpddr73bo8llbjg4miiold9tsph79l10.apps.googleusercontent.com"},
+				{"scope", "https://www.googleapis.com/auth/userinfo.profile"}
 			};
 			_service.Init(googleSignInConfig);
 			_service.SetAuthenticationCallbacks(this);
 
 			LoadApplication(new App());
-			return base.FinishedLaunching(app, options);
+			return base.FinishedLaunching(uiApplication, launchOptions);
 		}
 
-		public void OnConnectionFailed()
+		public void OnConnectionFailed(string errorMessage)
 		{
-			Console.WriteLine("Connection failed");
+			Console.WriteLine("Connection failed : " + errorMessage);
 		}
 
 		public void OnConnectionSucceeded()
