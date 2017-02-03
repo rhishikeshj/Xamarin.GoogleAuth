@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Plugin.GoogleAuth.Abstractions
 {
@@ -7,12 +6,12 @@ namespace Plugin.GoogleAuth.Abstractions
 	{
 		void Init(Dictionary<string, object> config);
 		void SetAuthenticationCallbacks(IGoogleAuthenticationCallbacks callbacks);
-		Task Connect();
-		Task SignOut();
-		string GetAuthToken();
+		void Connect();
+		void SignOut();
+		string GetIdToken();
 		string GetAccountName();
 		bool IsConnected();
-		Task Disconnect();
+		void Disconnect();
 
 		bool HandleURL(object urlObject, string sourceApplication, object annotation);
 	}
@@ -20,6 +19,6 @@ namespace Plugin.GoogleAuth.Abstractions
 	public interface IGoogleAuthenticationCallbacks
 	{
 		void OnConnectionSucceeded();
-		void OnConnectionFailed();
+		void OnConnectionFailed(string errorMessage);
 	}
 }
