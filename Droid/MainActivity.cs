@@ -28,7 +28,7 @@ namespace GoogleAuthSample.Droid
 			Xamarin.Forms.Forms.Init(this, bundle);
 			_service = CrossGoogleAuth.Current;
 			Dictionary<string, object> googleSignInConfig = new Dictionary<string, object> {
-				{"clientId", "20176738705-0fm670g68ej9t3p53deb62jr38kqd10u.apps.googleusercontent.com"},
+				{"clientId", ""},
 				{"context", this},
 			};
 			_service.Init(googleSignInConfig);
