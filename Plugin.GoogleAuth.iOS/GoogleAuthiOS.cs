@@ -56,7 +56,7 @@ namespace Plugin.GoogleAuth
 			clearOutValues(true);
 		}
 
-		public void Connect()
+		public void SignIn()
 		{
 			verifyInit();
 			Task.Run(() =>

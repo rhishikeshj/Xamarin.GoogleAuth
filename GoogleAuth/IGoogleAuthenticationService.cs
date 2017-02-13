@@ -6,7 +6,7 @@ namespace Plugin.GoogleAuth.Abstractions
 	{
 		void Init(Dictionary<string, object> config);
 		void SetAuthenticationCallbacks(IGoogleAuthenticationCallbacks callbacks);
-		void Connect();
+		void SignIn();
 		void SignOut();
 		string GetIdToken();
 		string GetAccountName();

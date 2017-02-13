@@ -27,7 +27,7 @@ namespace GoogleAuthSample
 
 		void loginClicked(object sender, EventArgs args)
 		{
-			_service.Connect();
+			_service.SignIn();
 		}
 
 		void logoutClicked(object sender, EventArgs args)
